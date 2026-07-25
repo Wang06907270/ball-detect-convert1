@@ -135,9 +135,9 @@ torch.onnx.export(
     f"{MODEL_DIR}/best.onnx",
     input_names=["images"],
     output_names=["output"],
-    dynamic_axes={"images": {0: "batch"}, "output": {0: "batch"}},
+    # NO dynamic_axes — fixed batch=1 for tpu_mlir compatibility
     opset_version=12,
-    dynamo=False,           # old-style exporter for tpu_mlir compat
+    dynamo=False,
 )
 
 # 验证 ONNX
