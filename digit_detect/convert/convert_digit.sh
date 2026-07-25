@@ -25,7 +25,7 @@ model_transform.py \
     --model_name ${MODEL_NAME} \
     --model_def ${ONNX_FILE} \
     --input_shapes ${INPUT_SHAPE} \
-    --pixel_format RGB \
+    --pixel_format rgb \
     --mean 0,0,0 \
     --scale 0.0039216,0.0039216,0.0039216 \
     --mlir ${MODEL_NAME}.mlir

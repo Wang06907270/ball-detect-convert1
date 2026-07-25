@@ -1,0 +1,53 @@
+name: Digit Classifier ONNX → CVIModel
+
+on:
+  push:
+    paths:
+      - 'digit_convert/**'
+  workflow_dispatch:
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    container:
+      image: sophgo/tpuc_dev:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: ONNX → MLIR
+        run: |
+          model_transform.py \
+            --model_name digit_cls \
+            --model_def $GITHUB_WORKSPACE/digit_convert/digit_cls.onnx \
+            --input_shapes [[1,3,224,224]] \
+            --pixel_format rgb \
+            --mean 0,0,0 \
+            --scale 0.0039216,0.0039216,0.0039216 \
+            --mlir digit_cls.mlir
+
+      - name: INT8 Calibration
+        run: |
+          run_calibration.py \
+            digit_cls.mlir \
+            --dataset $GITHUB_WORKSPACE/digit_convert/calib_images \
+            --input_num 48 \
+            -o digit_cls_cali_table
+
+      - name: MLIR → CVIModel
+        run: |
+          model_deploy.py \
+            --mlir digit_cls.mlir \
+            --quantize INT8 \
+            --calibration_table digit_cls_cali_table \
+            --processor cv181x \
+            --model digit_cls_int8.cvimodel
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digit_cls_cvimodel
+          path: digit_cls_int8.cvimodel
+          retention-days: 90
