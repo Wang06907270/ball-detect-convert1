@@ -2,8 +2,7 @@ name: Digit Classifier ONNX → CVIModel
 
 on:
   push:
-    paths:
-      - 'digit_convert/**'
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -29,7 +28,7 @@ jobs:
               pip install tpu_mlir -q 2>/dev/null || pip install tpu_mlir-*.whl -q 2>/dev/null || true
               which model_transform.py
 
-              echo "=== Step 1: ONNX → MLIR ==="
+              echo "=== Step 1: ONNX -> MLIR ==="
               model_transform.py \
                 --model_name digit_cls \
                 --model_def digit_convert/digit_cls.onnx \
@@ -46,7 +45,7 @@ jobs:
                 --input_num 48 \
                 -o digit_cls_cali_table
 
-              echo "=== Step 3: MLIR → CVIModel (INT8) ==="
+              echo "=== Step 3: MLIR -> CVIModel (INT8) ==="
               model_deploy.py \
                 --mlir digit_cls.mlir \
                 --quantize INT8 \
