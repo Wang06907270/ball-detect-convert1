@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Datasets (large, not needed for conversion)
+dataset/
+ball_dataset/
+ball_dataset2/
+
+# Training runs
+runs/
+
+# Temp/test files
+_test_*
+test_frame.jpg
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Convert intermediates (from Docker)
+*.mlir
+*_cali_table
+tpu_mlir*.whl
+
+# Note: keep cvimodel/ for final models
+# but don't commit intermediates
