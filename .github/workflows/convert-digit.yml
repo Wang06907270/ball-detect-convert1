@@ -9,43 +9,56 @@ on:
 jobs:
   convert:
     runs-on: ubuntu-latest
-    container:
-      image: sophgo/tpuc_dev:latest
-      options: --privileged
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: ONNX → MLIR
-        run: |
-          model_transform.py \
-            --model_name digit_cls \
-            --model_def $GITHUB_WORKSPACE/digit_convert/digit_cls.onnx \
-            --input_shapes [[1,3,224,224]] \
-            --pixel_format rgb \
-            --mean 0,0,0 \
-            --scale 0.0039216,0.0039216,0.0039216 \
-            --mlir digit_cls.mlir
+      - name: Pull tpu_mlir Docker image
+        run: docker pull sophgo/tpuc_dev:latest
 
-      - name: INT8 Calibration
+      - name: Convert ONNX → CVIModel
         run: |
-          run_calibration.py \
-            digit_cls.mlir \
-            --dataset $GITHUB_WORKSPACE/digit_convert/calib_images \
-            --input_num 48 \
-            -o digit_cls_cali_table
+          docker run --privileged --rm \
+            -v ${{ github.workspace }}:/workspace \
+            sophgo/tpuc_dev:latest \
+            bash -c '
+              set -e
+              cd /workspace
 
-      - name: MLIR → CVIModel
-        run: |
-          model_deploy.py \
-            --mlir digit_cls.mlir \
-            --quantize INT8 \
-            --calibration_table digit_cls_cali_table \
-            --processor cv181x \
-            --model digit_cls_int8.cvimodel
+              # Install tpu_mlir
+              pip install tpu_mlir -q 2>/dev/null || pip install tpu_mlir-*.whl -q 2>/dev/null || true
+              which model_transform.py
 
-      - name: Upload artifact
+              echo "=== Step 1: ONNX → MLIR ==="
+              model_transform.py \
+                --model_name digit_cls \
+                --model_def digit_convert/digit_cls.onnx \
+                --input_shapes [[1,3,224,224]] \
+                --mean 0,0,0 \
+                --scale 0.0039216,0.0039216,0.0039216 \
+                --pixel_format rgb \
+                --channel_format nchw \
+                --mlir digit_cls.mlir
+
+              echo "=== Step 2: INT8 Calibration ==="
+              run_calibration.py digit_cls.mlir \
+                --dataset digit_convert/calib_images \
+                --input_num 48 \
+                -o digit_cls_cali_table
+
+              echo "=== Step 3: MLIR → CVIModel (INT8) ==="
+              model_deploy.py \
+                --mlir digit_cls.mlir \
+                --quantize INT8 \
+                --calibration_table digit_cls_cali_table \
+                --processor cv181x \
+                --model digit_cls_int8.cvimodel
+
+              echo "=== Done ==="
+              ls -lh digit_cls_int8.cvimodel
+            '
+
+      - name: Upload CVIModel artifact
         uses: actions/upload-artifact@v4
         with:
           name: digit_cls_cvimodel
